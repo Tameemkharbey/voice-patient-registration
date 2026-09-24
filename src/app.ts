@@ -17,11 +17,12 @@ export const createApp = (db: Database, vapiSecret: string = config.vapiWebhookS
 
   app.disable('x-powered-by');
   app.use(requestLogger);
+  // Vapi end-of-call reports carry the full message history and routinely exceed 100kb.
+  app.use('/vapi', express.json({ limit: '5mb' }), vapiRouter(patients, calls, vapiSecret));
   app.use(express.json({ limit: '100kb' }));
 
   app.get('/health', (_req, res) => sendData(res, { status: 'ok' }));
   app.use('/patients', patientsRouter(patients, calls));
-  app.use('/vapi', vapiRouter(patients, calls, vapiSecret));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

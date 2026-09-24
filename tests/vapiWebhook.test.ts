@@ -103,3 +103,14 @@ describe('Vapi webhook', () => {
     expect(calls.body.data[0]).toMatchObject({ call_id: 'call-1', transcript: 'AI: Hi. User: Hello.' });
   });
 });
+
+describe('Vapi webhook payload size', () => {
+  it('accepts end-of-call reports larger than the 100kb REST limit', async () => {
+    const big = 'x'.repeat(300_000);
+    await request(app)
+      .post('/vapi/webhook')
+      .set('x-vapi-secret', SECRET)
+      .send({ message: { type: 'end-of-call-report', call: CALL, artifact: { transcript: big } } })
+      .expect(200);
+  });
+});
