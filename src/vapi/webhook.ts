@@ -18,6 +18,9 @@ type VapiMessage = {
   toolCallList?: VapiToolCall[];
   toolWithToolCallList?: { toolCall?: VapiToolCall }[];
   endedReason?: string;
+  durationSeconds?: number;
+  startedAt?: string;
+  endedAt?: string;
   summary?: string;
   transcript?: string;
   analysis?: { summary?: string };
@@ -58,6 +61,13 @@ const contextOf = (message: VapiMessage): ToolContext => ({
   callerNumber: message.call?.customer?.number ?? message.customer?.number ?? null,
 });
 
+const durationOf = (message: VapiMessage): number | null => {
+  if (typeof message.durationSeconds === 'number') return message.durationSeconds;
+  const started = Date.parse(message.startedAt ?? '');
+  const ended = Date.parse(message.endedAt ?? '');
+  return Number.isNaN(started) || Number.isNaN(ended) ? null : Math.max(0, (ended - started) / 1000);
+};
+
 const toolCallsOf = (message: VapiMessage): VapiToolCall[] =>
   message.toolCallList ?? message.toolWithToolCallList?.flatMap((t) => (t.toolCall ? [t.toolCall] : [])) ?? [];
 
@@ -90,6 +100,7 @@ export const vapiRouter = (patients: PatientService, calls: CallLogRepository, s
         ended_reason: message.endedReason ?? null,
         summary: message.analysis?.summary ?? message.summary ?? null,
         transcript: message.artifact?.transcript ?? message.transcript ?? null,
+        duration_seconds: durationOf(message),
       };
       const patientId = ctx.callId ? calls.patientIdForCall(ctx.callId) : null;
       if (ctx.callId) calls.saveReport(ctx.callId, report, new Date().toISOString());

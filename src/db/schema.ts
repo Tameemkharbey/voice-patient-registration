@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS call_logs (
   call_id       TEXT PRIMARY KEY,
   patient_id    TEXT REFERENCES patients (patient_id),
   caller_number TEXT,
+  outcome       TEXT CHECK (outcome IN ('registered', 'updated', 'existing')),
+  duration_seconds REAL,
   ended_reason  TEXT,
   summary       TEXT,
   transcript    TEXT,
@@ -45,4 +47,11 @@ CREATE TABLE IF NOT EXISTS call_logs (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_call_logs_patient ON call_logs (patient_id);
+CREATE INDEX IF NOT EXISTS idx_call_logs_created ON call_logs (created_at);
 `;
+
+// Additive column migrations for databases created before a column existed (CREATE IF NOT EXISTS won't add them).
+export const COLUMN_MIGRATIONS: { table: string; column: string; definition: string }[] = [
+  { table: 'call_logs', column: 'outcome', definition: 'TEXT' },
+  { table: 'call_logs', column: 'duration_seconds', definition: 'REAL' },
+];

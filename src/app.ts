@@ -8,6 +8,7 @@ import { createPatientRepository } from './db/patientRepository';
 import { sendData } from './lib/envelope';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
+import { callsRouter } from './routes/calls';
 import { patientsRouter } from './routes/patients';
 import { createPatientService } from './services/patientService';
 import { vapiRouter } from './vapi/webhook';
@@ -25,6 +26,7 @@ export const createApp = (db: Database, vapiSecret: string = config.vapiWebhookS
 
   app.get('/health', (_req, res) => sendData(res, { status: 'ok' }));
   app.use('/patients', patientsRouter(patients, calls));
+  app.use('/calls', callsRouter(calls));
 
   // Serve the built dashboard SPA when present; absent in test/build environments without a dashboard build.
   const dashboardDist = path.resolve(__dirname, '../dashboard/dist');

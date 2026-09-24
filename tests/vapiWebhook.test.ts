@@ -114,3 +114,41 @@ describe('Vapi webhook payload size', () => {
       .expect(200);
   });
 });
+
+describe('GET /calls', () => {
+  it('lists calls newest first with outcome, duration and patient name; detail includes transcript', async () => {
+    await toolCall('create_patient', patient);
+    await request(app)
+      .post('/vapi/webhook')
+      .set('x-vapi-secret', SECRET)
+      .send({
+        message: {
+          type: 'end-of-call-report',
+          call: CALL,
+          endedReason: 'customer-ended-call',
+          startedAt: '2026-01-01T10:00:00.000Z',
+          endedAt: '2026-01-01T10:02:30.000Z',
+          artifact: { transcript: 'AI: Hi.' },
+        },
+      })
+      .expect(200);
+    await request(app)
+      .post('/vapi/webhook')
+      .set('x-vapi-secret', SECRET)
+      .send({ message: { type: 'end-of-call-report', call: { id: 'call-2' }, durationSeconds: 12, artifact: { transcript: 'AI: Bye.' } } })
+      .expect(200);
+
+    const list = await request(app).get('/calls');
+    expect(list.status).toBe(200);
+    expect(list.body.data).toHaveLength(2);
+    const registered = list.body.data.find((c: { call_id: string }) => c.call_id === 'call-1');
+    expect(registered).toMatchObject({ outcome: 'registered', duration_seconds: 150, patient_name: 'Jane Davis' });
+    expect(registered).not.toHaveProperty('transcript');
+    expect(list.body.data.find((c: { call_id: string }) => c.call_id === 'call-2')).toMatchObject({ outcome: null, patient_name: null });
+
+    const detail = await request(app).get('/calls/call-1');
+    expect(detail.body.data.transcript).toBe('AI: Hi.');
+    expect((await request(app).get('/calls/missing')).status).toBe(404);
+    expect((await request(app).get('/calls?limit=0')).status).toBe(400);
+  });
+});

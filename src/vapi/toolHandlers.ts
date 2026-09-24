@@ -1,4 +1,4 @@
-import type { CallLogRepository } from '../db/callLogRepository';
+import type { CallLogRepository, CallOutcome } from '../db/callLogRepository';
 import { isAppError } from '../lib/errors';
 import { log } from '../lib/logger';
 import type { Patient, PatientService } from '../services/patientService';
@@ -50,10 +50,10 @@ const handleFailure = (err: unknown, tool: string, ctx: ToolContext): ToolResult
   };
 };
 
-const linkCall = (calls: CallLogRepository, ctx: ToolContext, patientId: string): void => {
+const linkCall = (calls: CallLogRepository, ctx: ToolContext, patientId: string, outcome: CallOutcome): void => {
   if (!ctx.callId) return;
   try {
-    calls.linkPatient(ctx.callId, patientId, ctx.callerNumber, new Date().toISOString());
+    calls.linkPatient(ctx.callId, patientId, ctx.callerNumber, outcome, new Date().toISOString());
   } catch (err) {
     // Linking is bookkeeping; the patient write already succeeded, so don't fail the caller over it.
     log.warn('vapi.call_link_failed', { call_id: ctx.callId, patient_id: patientId, error: String(err) });
@@ -98,7 +98,7 @@ export const createToolHandlers = (patients: PatientService, calls: CallLogRepos
               p.last_name.toLowerCase() === String(input.last_name ?? '').trim().toLowerCase(),
           );
         if (existing) {
-          linkCall(calls, ctx, existing.patient_id);
+          linkCall(calls, ctx, existing.patient_id, 'existing');
           return {
             status: 'already_exists',
             patient: summarize(existing),
@@ -108,7 +108,7 @@ export const createToolHandlers = (patients: PatientService, calls: CallLogRepos
         }
       }
       const patient = patients.create(input);
-      linkCall(calls, ctx, patient.patient_id);
+      linkCall(calls, ctx, patient.patient_id, 'registered');
       return {
         status: 'success',
         patient: summarize(patient),
@@ -126,7 +126,7 @@ export const createToolHandlers = (patients: PatientService, calls: CallLogRepos
     }
     try {
       const patient = patients.update(patientId, pickPatientFields(args));
-      linkCall(calls, ctx, patient.patient_id);
+      linkCall(calls, ctx, patient.patient_id, 'updated');
       return {
         status: 'success',
         patient: summarize(patient),
