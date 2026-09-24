@@ -80,6 +80,45 @@ export const isToday = (isoTimestamp: string): boolean => {
   );
 };
 
+export const isWithinDays = (isoTimestamp: string, days: number): boolean => {
+  const then = new Date(isoTimestamp).getTime();
+  if (Number.isNaN(then)) return false;
+  return Date.now() - then <= days * 86400000;
+};
+
+export const formatDuration = (seconds: number | null): string => {
+  if (seconds === null || Number.isNaN(seconds) || seconds < 0) return '—';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const ENDED_REASON_LABELS: Record<string, string> = {
+  'customer-ended-call': 'Caller hung up',
+  'assistant-ended-call': 'Riley ended the call',
+  'silence-timed-out': 'Call timed out',
+  'exceeded-max-duration': 'Max duration reached',
+  'assistant-error': 'Assistant error',
+  'phone-call-provider-closed-websocket': 'Connection dropped',
+};
+
+export const humanizeEndedReason = (reason: string | null): string => {
+  if (!reason) return 'In progress';
+  if (ENDED_REASON_LABELS[reason]) return ENDED_REASON_LABELS[reason]!;
+  return reason
+    .split('-')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+export const maskCallerNumber = (raw: string | null): string => {
+  if (!raw) return 'Web call';
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 4) return 'Unknown caller';
+  return `(•••) •••-${digits.slice(-4)}`;
+};
+
 export const isThisWeek = (isoTimestamp: string): boolean => {
   const date = new Date(isoTimestamp).getTime();
   const now = new Date();

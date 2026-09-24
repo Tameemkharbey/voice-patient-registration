@@ -20,7 +20,7 @@ const parseTranscript = (transcript: string): TranscriptLine[] =>
       return { speaker, text: match[2] ?? '' };
     });
 
-const TranscriptView = ({ transcript }: { transcript: string }): React.JSX.Element => {
+export const TranscriptView = ({ transcript }: { transcript: string }): React.JSX.Element => {
   const lines = parseTranscript(transcript);
   const isChatFormat = lines.some((l) => l.speaker !== 'Other');
 

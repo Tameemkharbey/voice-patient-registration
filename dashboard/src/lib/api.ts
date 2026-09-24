@@ -2,6 +2,7 @@ import type {
   ApiEnvelope,
   ApiError,
   CallLog,
+  CallSummary,
   Patient,
   PatientFilters,
   UpdatePatientInput,
@@ -57,6 +58,8 @@ export const api = {
   listPatients: (filters: PatientFilters = {}) => request<Patient[]>(`/patients${toQuery(filters)}`),
   getPatient: (id: string) => request<Patient>(`/patients/${id}`),
   getPatientCalls: (id: string) => request<CallLog[]>(`/patients/${id}/calls`),
+  listCalls: (limit = 50) => request<CallSummary[]>(`/calls?limit=${limit}`),
+  getCall: (callId: string) => request<CallLog>(`/calls/${encodeURIComponent(callId)}`),
   updatePatient: (id: string, input: UpdatePatientInput) =>
     request<Patient>(`/patients/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
   deletePatient: (id: string) =>

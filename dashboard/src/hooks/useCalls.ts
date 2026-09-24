@@ -1,68 +1,73 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ApiRequestError, api } from '@/lib/api';
-import type { Patient, PatientFilters } from '@/lib/types';
+import type { CallSummary } from '@/lib/types';
 
 const REFRESH_INTERVAL_MS = 15000;
 const HIGHLIGHT_DURATION_MS = 3200;
 
 type State = {
-  patients: Patient[];
+  calls: CallSummary[];
   loading: boolean;
   refreshing: boolean;
   error: string | null;
 };
 
-export const usePatients = (filters: PatientFilters) => {
-  const [state, setState] = useState<State>({ patients: [], loading: true, refreshing: false, error: null });
+const outcomeToastLabel = (call: CallSummary): string => {
+  if (call.outcome === 'registered') return 'Registered';
+  if (call.outcome === 'updated') return 'Updated';
+  if (call.outcome === 'existing') return 'Returning caller';
+  if (call.patient_id) return 'Linked';
+  return 'No record saved';
+};
+
+export const useCalls = (limit: number) => {
+  const [state, setState] = useState<State>({ calls: [], loading: true, refreshing: false, error: null });
   const [justAddedIds, setJustAddedIds] = useState<Set<string>>(new Set());
-  const filtersRef = useRef(filters);
-  filtersRef.current = filters;
   const seenIdsRef = useRef<Set<string> | null>(null);
 
   const load = useCallback(async (isBackground: boolean) => {
     setState((prev) => ({
       ...prev,
-      loading: isBackground ? prev.loading : prev.patients.length === 0,
+      loading: isBackground ? prev.loading : prev.calls.length === 0,
       refreshing: isBackground,
     }));
     try {
-      const patients = await api.listPatients(filtersRef.current);
+      const calls = await api.listCalls(limit);
 
       if (seenIdsRef.current) {
-        const newOnes = patients.filter((p) => !seenIdsRef.current!.has(p.patient_id));
+        const newOnes = calls.filter((c) => !seenIdsRef.current!.has(c.call_id));
         if (newOnes.length > 0) {
           setJustAddedIds((prev) => {
             const next = new Set(prev);
-            newOnes.forEach((p) => next.add(p.patient_id));
+            newOnes.forEach((c) => next.add(c.call_id));
             return next;
           });
-          newOnes.forEach((p) => toast.success(`New patient registered: ${p.first_name} ${p.last_name}`));
+          newOnes.forEach((c) => toast.success(`Call ended: ${outcomeToastLabel(c)}`));
           setTimeout(() => {
             setJustAddedIds((prev) => {
               const next = new Set(prev);
-              newOnes.forEach((p) => next.delete(p.patient_id));
+              newOnes.forEach((c) => next.delete(c.call_id));
               return next;
             });
           }, HIGHLIGHT_DURATION_MS);
         }
       }
-      seenIdsRef.current = new Set(patients.map((p) => p.patient_id));
+      seenIdsRef.current = new Set(calls.map((c) => c.call_id));
 
-      setState({ patients, loading: false, refreshing: false, error: null });
+      setState({ calls, loading: false, refreshing: false, error: null });
     } catch (err) {
-      const message = err instanceof ApiRequestError ? err.message : 'Failed to load patients.';
+      const message = err instanceof ApiRequestError ? err.message : 'Failed to load calls.';
       setState((prev) => ({ ...prev, loading: false, refreshing: false, error: message }));
     }
-  }, []);
+  }, [limit]);
 
   useEffect(() => {
     seenIdsRef.current = null;
     void load(false);
     const interval = setInterval(() => void load(true), REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load, filters.last_name, filters.date_of_birth, filters.phone_number]);
+  }, [load]);
 
   const refetch = useCallback(() => load(false), [load]);
 

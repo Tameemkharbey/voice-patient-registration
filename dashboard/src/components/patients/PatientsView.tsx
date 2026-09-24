@@ -1,5 +1,7 @@
 import type * as React from 'react';
 import { useMemo, useState } from 'react';
+import { CallDetailSheet } from '@/components/calls/CallDetailSheet';
+import { RecentCallsPanel } from '@/components/calls/RecentCallsPanel';
 import { EmptyState } from './EmptyState';
 import { ErrorState } from './ErrorState';
 import { FiltersBar } from './FiltersBar';
@@ -7,17 +9,21 @@ import { PatientDetailSheet } from './PatientDetailSheet';
 import { PatientTable } from './PatientTable';
 import { StatCards } from './StatCards';
 import { TableSkeleton } from './TableSkeleton';
+import { VoiceCallBanner } from './VoiceCallBanner';
+import { useCalls } from '@/hooks/useCalls';
 import { usePatients } from '@/hooks/usePatients';
-import type { PatientFilters } from '@/lib/types';
+import type { CallSummary, PatientFilters } from '@/lib/types';
 
-type PatientsViewProps = {
-  search: string;
-};
+const CALLS_LIMIT = 100;
 
-export const PatientsView = ({ search }: PatientsViewProps): React.JSX.Element => {
+export const PatientsView = (): React.JSX.Element => {
+  const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<PatientFilters>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { patients, loading, refreshing, error, refetch } = usePatients(filters);
+  const [selectedCall, setSelectedCall] = useState<CallSummary | null>(null);
+
+  const { patients, loading, refreshing, error, refetch, justAddedIds } = usePatients(filters);
+  const { calls, loading: callsLoading, error: callsError, justAddedIds: newCallIds } = useCalls(CALLS_LIMIT);
 
   const visiblePatients = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -32,24 +38,36 @@ export const PatientsView = ({ search }: PatientsViewProps): React.JSX.Element =
 
   return (
     <div className="flex flex-col gap-6">
-      <StatCards patients={patients} />
+      <VoiceCallBanner />
 
-      <FiltersBar filters={filters} onChange={setFilters} />
+      <StatCards patients={patients} calls={calls} />
 
-      {loading ? (
-        <TableSkeleton />
-      ) : error ? (
-        <ErrorState message={error} onRetry={refetch} />
-      ) : visiblePatients.length === 0 ? (
-        <EmptyState hasFilters={hasFilters} onResetFilters={() => setFilters({})} />
-      ) : (
-        <div className="relative">
-          {refreshing && (
-            <div className="absolute -top-3 right-0 text-[11px] text-muted-foreground">Refreshing…</div>
+      <FiltersBar search={search} onSearchChange={setSearch} filters={filters} onFiltersChange={setFilters} refreshing={refreshing} />
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          {loading ? (
+            <TableSkeleton />
+          ) : error ? (
+            <ErrorState message={error} onRetry={refetch} />
+          ) : visiblePatients.length === 0 ? (
+            <EmptyState hasFilters={hasFilters} onResetFilters={() => setFilters({})} />
+          ) : (
+            <PatientTable patients={visiblePatients} onSelect={(p) => setSelectedId(p.patient_id)} justAddedIds={justAddedIds} />
           )}
-          <PatientTable patients={visiblePatients} onSelect={(p) => setSelectedId(p.patient_id)} />
         </div>
-      )}
+
+        <div className="xl:col-span-1">
+          <RecentCallsPanel
+            calls={calls}
+            loading={callsLoading}
+            error={callsError}
+            justAddedIds={newCallIds}
+            onOpenCall={setSelectedCall}
+            onOpenPatient={setSelectedId}
+          />
+        </div>
+      </div>
 
       <PatientDetailSheet
         patientId={selectedId}
@@ -58,6 +76,16 @@ export const PatientsView = ({ search }: PatientsViewProps): React.JSX.Element =
         onPatientDeleted={() => {
           setSelectedId(null);
           refetch();
+        }}
+      />
+
+      <CallDetailSheet
+        callId={selectedCall?.call_id ?? null}
+        patientName={selectedCall?.patient_name}
+        onOpenChange={(open) => !open && setSelectedCall(null)}
+        onOpenPatient={(patientId) => {
+          setSelectedCall(null);
+          setSelectedId(patientId);
         }}
       />
     </div>

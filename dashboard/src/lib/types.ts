@@ -20,16 +20,23 @@ export type Patient = {
   updated_at: string;
 };
 
+export type CallOutcome = 'registered' | 'updated' | 'existing';
+
 export type CallLog = {
   call_id: string;
   patient_id: string | null;
   caller_number: string | null;
+  outcome: CallOutcome | null;
+  duration_seconds: number | null;
   ended_reason: string | null;
   summary: string | null;
   transcript: string | null;
   created_at: string;
   updated_at: string;
 };
+
+// List view: no transcript, plus the linked patient's name for display.
+export type CallSummary = Omit<CallLog, 'transcript'> & { patient_name: string | null };
 
 export type FieldError = { field: string; message: string };
 

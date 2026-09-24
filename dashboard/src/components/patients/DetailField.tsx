@@ -2,7 +2,7 @@ import type * as React from 'react';
 
 export const DetailField = ({ label, value }: { label: string; value: React.ReactNode }): React.JSX.Element => (
   <div className="flex flex-col gap-0.5">
-    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+    <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
     <span className="text-sm text-foreground">{value || <span className="text-muted-foreground">—</span>}</span>
   </div>
 );

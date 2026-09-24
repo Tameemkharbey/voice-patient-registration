@@ -5,13 +5,14 @@ import { CallLogList } from './CallLogList';
 import { DeletePatientDialog } from './DeletePatientDialog';
 import { DetailField, DetailGroup } from './DetailField';
 import { EditPatientDialog } from './EditPatientDialog';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePatientDetail } from '@/hooks/usePatientDetail';
-import { ageFromUsDate, formatDateTime, formatPhone } from '@/lib/format';
+import { ageFromUsDate, formatDateTime, formatPhone, initials } from '@/lib/format';
 import type { Patient } from '@/lib/types';
 
 type PatientDetailSheetProps = {
@@ -56,16 +57,75 @@ export const PatientDetailSheet = ({
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const age = patient ? ageFromUsDate(patient.date_of_birth) : null;
+  const isReturning = calls.some((c) => c.outcome === 'updated' || c.outcome === 'existing');
+  const hasInsurance = Boolean(patient?.insurance_provider || patient?.insurance_member_id);
+  const hasEmergencyContact = Boolean(patient?.emergency_contact_name || patient?.emergency_contact_phone);
 
   return (
     <>
       <Sheet open={Boolean(patientId)} onOpenChange={onOpenChange}>
         <SheetContent className="p-0">
           <SheetHeader>
-            <SheetTitle>{patient ? `${patient.first_name} ${patient.last_name}` : 'Patient details'}</SheetTitle>
-            <SheetDescription>
-              {patient ? `${patient.sex} · ${age !== null ? `${age} years old` : patient.date_of_birth}` : 'Loading patient record…'}
-            </SheetDescription>
+            <SheetTitle className="sr-only">{patient ? `${patient.first_name} ${patient.last_name}` : 'Patient details'}</SheetTitle>
+            <SheetDescription className="sr-only">Patient record details and call history</SheetDescription>
+
+            {patient && !loading ? (
+              <div className="flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      initials={initials(patient.first_name, patient.last_name)}
+                      seed={patient.patient_id}
+                      className="h-11 w-11 text-sm"
+                    />
+                    <div>
+                      <p className="text-base font-semibold text-foreground">
+                        {patient.first_name} {patient.last_name}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <Badge variant="outline">
+                          {patient.sex} · {age !== null ? `${age}y` : patient.date_of_birth}
+                        </Badge>
+                        {hasInsurance ? <Badge variant="success">Insured</Badge> : <Badge variant="outline">Self-pay</Badge>}
+                        {isReturning && <Badge variant="violet">Returning</Badge>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Button size="sm" variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5">
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setDeleteOpen(true)}
+                      aria-label="Delete patient"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 rounded-md bg-muted/50 p-3 text-sm sm:grid-cols-3">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Phone</p>
+                    <p className="text-foreground">{formatPhone(patient.phone_number)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Date of birth</p>
+                    <p className="text-foreground">{patient.date_of_birth}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Patient ID</p>
+                    <CopyId id={patient.patient_id} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{loading ? 'Loading patient record…' : 'Patient details'}</p>
+            )}
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -94,22 +154,6 @@ export const PatientDetailSheet = ({
                 </TabsList>
 
                 <TabsContent value="details" className="flex flex-col gap-6">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button size="sm" onClick={() => setEditOpen(true)} className="gap-1.5">
-                      <Pencil className="h-3.5 w-3.5" />
-                      Edit
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => setDeleteOpen(true)} className="gap-1.5">
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Delete
-                    </Button>
-                    {patient.insurance_provider ? (
-                      <Badge variant="success" className="ml-auto">Insured</Badge>
-                    ) : (
-                      <Badge variant="outline" className="ml-auto">Self-pay</Badge>
-                    )}
-                  </div>
-
                   <DetailGroup title="Identity">
                     <DetailField label="First name" value={patient.first_name} />
                     <DetailField label="Last name" value={patient.last_name} />
@@ -131,21 +175,28 @@ export const PatientDetailSheet = ({
                     <DetailField label="ZIP code" value={patient.zip_code} />
                   </DetailGroup>
 
-                  <DetailGroup title="Insurance">
-                    <DetailField label="Provider" value={patient.insurance_provider} />
-                    <DetailField label="Member ID" value={patient.insurance_member_id} />
-                  </DetailGroup>
+                  {hasInsurance ? (
+                    <DetailGroup title="Insurance">
+                      <DetailField label="Provider" value={patient.insurance_provider} />
+                      <DetailField label="Member ID" value={patient.insurance_member_id} />
+                    </DetailGroup>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No insurance on file.</p>
+                  )}
 
-                  <DetailGroup title="Emergency contact">
-                    <DetailField label="Name" value={patient.emergency_contact_name} />
-                    <DetailField
-                      label="Phone"
-                      value={patient.emergency_contact_phone ? formatPhone(patient.emergency_contact_phone) : null}
-                    />
-                  </DetailGroup>
+                  {hasEmergencyContact ? (
+                    <DetailGroup title="Emergency contact">
+                      <DetailField label="Name" value={patient.emergency_contact_name} />
+                      <DetailField
+                        label="Phone"
+                        value={patient.emergency_contact_phone ? formatPhone(patient.emergency_contact_phone) : null}
+                      />
+                    </DetailGroup>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No emergency contact on file.</p>
+                  )}
 
                   <DetailGroup title="Record metadata">
-                    <DetailField label="Patient ID" value={<CopyId id={patient.patient_id} />} />
                     <DetailField label="Created" value={formatDateTime(patient.created_at)} />
                     <DetailField label="Last updated" value={formatDateTime(patient.updated_at)} />
                   </DetailGroup>

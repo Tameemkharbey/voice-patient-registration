@@ -13,6 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/patients': 'http://localhost:3000',
+      '/calls': 'http://localhost:3000',
       '/health': 'http://localhost:3000',
     },
   },

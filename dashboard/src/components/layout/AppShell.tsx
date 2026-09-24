@@ -8,12 +8,10 @@ type AppShellProps = {
   view: View;
   onNavigate: (view: View) => void;
   title: string;
-  search?: string | undefined;
-  onSearchChange?: ((value: string) => void) | undefined;
   children: React.ReactNode;
 };
 
-export const AppShell = ({ view, onNavigate, title, search, onSearchChange, children }: AppShellProps): React.JSX.Element => {
+export const AppShell = ({ view, onNavigate, title, children }: AppShellProps): React.JSX.Element => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
@@ -36,7 +34,7 @@ export const AppShell = ({ view, onNavigate, title, search, onSearchChange, chil
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header title={title} search={search} onSearchChange={onSearchChange} onMenuClick={() => setMobileNavOpen(true)} />
+        <Header title={title} onMenuClick={() => setMobileNavOpen(true)} />
         <main className="flex-1 px-4 py-6 sm:px-6">{children}</main>
       </div>
     </div>
