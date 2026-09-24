@@ -3,7 +3,7 @@ import { Router, type Request, type RequestHandler } from 'express';
 import type { CallLogRepository } from '../db/callLogRepository';
 import { sendError } from '../lib/envelope';
 import { log } from '../lib/logger';
-import type { PatientService } from '../services/patientService';
+import type { Patient, PatientService } from '../services/patientService';
 import { createToolHandlers, type ToolContext } from './toolHandlers';
 
 // Vapi server-message webhook. Vapi owns telephony/STT/TTS/LLM; this adapter only translates
@@ -68,6 +68,15 @@ const durationOf = (message: VapiMessage): number | null => {
   return Number.isNaN(started) || Number.isNaN(ended) ? null : Math.max(0, (ended - started) / 1000);
 };
 
+// Log enrichment only: a missing (soft-deleted) or unreadable patient yields null instead of throwing.
+const lookupPatient = (patients: PatientService, id: string): Patient | null => {
+  try {
+    return patients.get(id);
+  } catch {
+    return null;
+  }
+};
+
 const toolCallsOf = (message: VapiMessage): VapiToolCall[] =>
   message.toolCallList ?? message.toolWithToolCallList?.flatMap((t) => (t.toolCall ? [t.toolCall] : [])) ?? [];
 
@@ -102,13 +111,22 @@ export const vapiRouter = (patients: PatientService, calls: CallLogRepository, s
         transcript: message.artifact?.transcript ?? message.transcript ?? null,
         duration_seconds: durationOf(message),
       };
-      const patientId = ctx.callId ? calls.patientIdForCall(ctx.callId) : null;
-      if (ctx.callId) calls.saveReport(ctx.callId, report, new Date().toISOString());
+      // Persist first and log regardless: a DB problem must not lose the transcript from stdout,
+      // and the call is already over, so Vapi always gets a 200.
+      let patientId: string | null = null;
+      try {
+        if (ctx.callId) {
+          calls.saveReport(ctx.callId, report, new Date().toISOString());
+          patientId = calls.patientIdForCall(ctx.callId);
+        }
+      } catch (err) {
+        log.error('vapi.call_report_save_failed', { call_id: ctx.callId, error: String(err) });
+      }
       // A call that ends with no linked patient covers the dropped-call case: logged, nothing half-saved.
       log.info('vapi.call_ended', {
         call_id: ctx.callId,
         ended_reason: report.ended_reason,
-        registered_patient: patientId ? patients.list({}).find((p) => p.patient_id === patientId) ?? null : null,
+        registered_patient: patientId ? lookupPatient(patients, patientId) : null,
         outcome: patientId ? 'patient_saved' : 'no_record_saved',
         summary: report.summary,
         transcript: report.transcript,

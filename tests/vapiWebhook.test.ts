@@ -152,3 +152,14 @@ describe('GET /calls', () => {
     expect((await request(app).get('/calls?limit=0')).status).toBe(400);
   });
 });
+
+describe('end-of-call report resilience', () => {
+  it('still answers 200 when the database is unavailable', async () => {
+    db.close();
+    await request(app)
+      .post('/vapi/webhook')
+      .set('x-vapi-secret', SECRET)
+      .send({ message: { type: 'end-of-call-report', call: CALL, artifact: { transcript: 'AI: Hi.' } } })
+      .expect(200);
+  });
+});
