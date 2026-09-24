@@ -10,6 +10,7 @@ import {
   toFieldErrors,
   updatePatientSchema,
 } from '../validation/patientSchema';
+import { zipMatchesState } from '../validation/zipRanges';
 
 // Business rules live here so the REST routes and the Vapi tool handlers share one validation path.
 
@@ -35,6 +36,13 @@ const validate = <S extends z.ZodTypeAny>(schema: S, input: unknown): z.output<S
 };
 
 const nowIso = (): string => new Date().toISOString();
+
+// Cross-field rule: a ZIP from another state is almost always a mishearing, so ask for it again.
+const assertZipMatchesState = (zip: string, state: string): void => {
+  if (!zipMatchesState(zip, state)) {
+    throw unprocessable([{ field: 'zip_code', message: `zip_code ${zip} does not belong to state ${state}` }]);
+  }
+};
 
 const parseFilters = (query: Record<string, unknown>): PatientFilters => {
   const single = (key: string): string | undefined => {
@@ -78,6 +86,7 @@ export const createPatientService = (repo: PatientRepository) => {
 
   const create = (input: unknown): Patient => {
     const data = validate(createPatientSchema, input);
+    assertZipMatchesState(data.zip_code, data.state);
     const timestamp = nowIso();
     const record: Omit<PatientRecord, 'deleted_at'> = {
       patient_id: randomUUID(),
@@ -113,6 +122,11 @@ export const createPatientService = (repo: PatientRepository) => {
     );
     if (Object.keys(changes).length === 0) throw badRequest('Provide at least one field to update');
     if ('preferred_language' in changes && changes.preferred_language === null) changes.preferred_language = 'English';
+    if (data.state !== undefined || data.zip_code !== undefined) {
+      const current = repo.findById(id);
+      if (!current) throw notFound('Patient');
+      assertZipMatchesState(data.zip_code ?? current.zip_code, data.state ?? current.state);
+    }
     if (!repo.update(id, changes, nowIso())) throw notFound('Patient');
     const patient = get(id);
     log.info('patient.updated', { patient_id: id, changed_fields: Object.keys(changes), patient });

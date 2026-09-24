@@ -115,3 +115,16 @@ describe('GET/PUT/DELETE /patients/:id', () => {
     expect((await request(app).put(`/patients/${id}`).send({ state: 'ZZ' })).status).toBe(422);
   });
 });
+
+describe('ZIP / state consistency', () => {
+  it('rejects a ZIP that belongs to another state on create and update', async () => {
+    const res = await create({ ...valid, city: 'New York', state: 'NY', zip_code: '17800' });
+    expect(res.status).toBe(422);
+    expect(res.body.error.details).toEqual([{ field: 'zip_code', message: 'zip_code 17800 does not belong to state NY' }]);
+
+    const id = (await create()).body.data.patient_id;
+    expect((await request(app).put(`/patients/${id}`).send({ state: 'NY' })).status).toBe(422);
+    const moved = await request(app).put(`/patients/${id}`).send({ city: 'New York', state: 'NY', zip_code: '10001' });
+    expect(moved.status).toBe(200);
+  });
+});

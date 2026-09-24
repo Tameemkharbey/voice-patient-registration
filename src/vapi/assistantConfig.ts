@@ -105,7 +105,8 @@ export const buildAssistant = (opts: AssistantOptions) => {
       messages: [{ role: 'system', content: SYSTEM_PROMPT }],
       tools,
     },
-    voice: { provider: 'vapi', voiceId: opts.voiceId },
+    // Filler injection produced audible stutters ("the the", "or or") in test calls.
+    voice: { provider: 'vapi', voiceId: opts.voiceId, fillerInjectionEnabled: false },
     transcriber: { provider: 'deepgram', model: 'nova-3', language: opts.transcriberLanguage },
     server,
     serverMessages: ['tool-calls', 'end-of-call-report', 'status-update'],

@@ -64,7 +64,11 @@ export const createToolHandlers = (patients: PatientService, calls: CallLogRepos
   find_patient_by_phone: (args, ctx) => {
     const phone = typeof args.phone_number === 'string' && args.phone_number.trim() ? args.phone_number : ctx.callerNumber;
     if (!phone) {
-      return { status: 'no_phone', instruction: 'No phone number is available yet. Continue the registration normally.' };
+      return {
+        status: 'no_phone',
+        instruction:
+          'Caller ID is not available on this call. Never assume or suggest any phone number; ask the caller for the best number to reach them, then continue the registration normally.',
+      };
     }
     try {
       const matches = patients.findByPhone(phone);
