@@ -8,7 +8,8 @@
     "start": "node --disable-warning=ExperimentalWarning dist/server.js",
     "seed": "tsx src/db/seed.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "vapi:setup": "tsx src/scripts/vapiSetup.ts"
   },
   "author": "",
   "license": "UNLICENSED",

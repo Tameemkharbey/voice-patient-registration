@@ -31,4 +31,18 @@ CREATE TABLE IF NOT EXISTS patients (
 CREATE INDEX IF NOT EXISTS idx_patients_phone     ON patients (phone_number)                 WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_patients_last_name ON patients (last_name COLLATE NOCASE)     WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_patients_dob       ON patients (date_of_birth)                WHERE deleted_at IS NULL;
+
+-- One row per phone call: linked to the patient it created/updated, plus the end-of-call transcript.
+CREATE TABLE IF NOT EXISTS call_logs (
+  call_id       TEXT PRIMARY KEY,
+  patient_id    TEXT REFERENCES patients (patient_id),
+  caller_number TEXT,
+  ended_reason  TEXT,
+  summary       TEXT,
+  transcript    TEXT,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_call_logs_patient ON call_logs (patient_id);
 `;
