@@ -1,4 +1,4 @@
-# CloudCare Patient Registration — Voice AI Agent
+# Voice AI Patient Registration Agent
 
 A Vapi-powered voice agent ("Riley") that registers patients over the phone by
 having a natural conversation, then writes the record through the same
