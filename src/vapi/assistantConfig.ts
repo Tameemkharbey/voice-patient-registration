@@ -110,6 +110,8 @@ export const buildAssistant = (opts: AssistantOptions) => {
     transcriber: { provider: 'deepgram', model: 'nova-3', language: opts.transcriberLanguage },
     server,
     serverMessages: ['tool-calls', 'end-of-call-report', 'status-update'],
+    // Adds analysis.summary to the end-of-call report; stored in call_logs and shown in the dashboard.
+    analysisPlan: { summaryPlan: { enabled: true } },
     endCallFunctionEnabled: true,
     endCallMessage: 'Thanks for calling Sunrise Health Clinic. Take care!',
     silenceTimeoutSeconds: 30,

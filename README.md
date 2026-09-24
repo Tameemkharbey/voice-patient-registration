@@ -342,6 +342,22 @@ start with your first and last name?"*
 | Duplicate `create_patient` tool call (retry, model double-call) | Matches on phone number + first/last name before inserting; returns `already_exists` instead of a second row | `src/vapi/toolHandlers.ts` (`create_patient` idempotency guard), `tests/vapiWebhook.test.ts` ("does not create a duplicate...") |
 | Returning caller | `find_patient_by_phone` looks up by caller ID (or a stated number) before registration begins; prompt offers to update instead of re-registering | `src/vapi/toolHandlers.ts` (`find_patient_by_phone`), Step 1 of prompt |
 | Spanish-speaking caller | Deepgram transcriber runs in `multi` mode (EN/ES); prompt switches spoken language on request while keeping stored values in their standard form | `src/vapi/assistantConfig.ts` (`transcriber.language`), "Language" section of prompt |
+| ZIP that doesn't match the state (e.g. "New York, NY 17800") | Server-side USPS prefix check returns 422 `zip_code ... does not belong to state NY`; agent re-asks only the ZIP | `src/validation/zipRanges.ts`, `src/services/patientService.ts` |
+| No caller ID (web calls, blocked numbers) | Tool result `no_phone` tells the agent never to assume a number; prompt forbids inventing one | `src/vapi/toolHandlers.ts`, "Context" section of prompt |
+
+## Findings from live test calls
+
+The agent was iterated on real calls (Vapi web calls plus the phone line); each fix is a separate commit.
+
+| Observed on a call | Root cause | Fix |
+|---|---|---|
+| Invalid number `0123456789` accepted until save time | Prompt only checked digit count | Prompt checks area codes can't start with 0/1 at capture time |
+| Read-back used a misheard spelling after the caller spelled the name | No rule that spelling is authoritative | Spelled letters become final for read-back and save |
+| Blank insurance provider read back | Value never understood, still read back | Prompt re-asks any unknown value before the read-back |
+| Transcripts never stored | Vapi end-of-call reports exceeded the 100kb JSON limit (413) | Webhook gets its own 5mb parser; REST stays at 100kb |
+| Agent offered a phone number on a web call with no caller ID | The prompt's example number leaked into the answer | Example removed; explicit no-caller-ID rule in prompt and tool result |
+| "New York, NY 17800" saved | LLM noticed the mismatch but accepted it | Deterministic server-side ZIP/state check |
+| Audible stutters ("the the") | Vapi voice filler injection | `fillerInjectionEnabled: false` |
 
 ## Observability
 
@@ -475,6 +491,8 @@ Requires **Node.js >= 22.13.0** (`package.json` `engines.node`) for
   risk, but it isn't eliminated.
 - **No rate limiting** on the REST API or webhook.
 - **The free Vapi number is US inbound only.**
+
+- ZIP/state validation uses coarse 3-digit USPS prefix ranges: it catches clear mismatches but does not verify that a ZIP exists or matches the city.
 
 ## Next steps
 
