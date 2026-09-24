@@ -11,15 +11,15 @@ validated, identically shaped data.
 
 ```
 Phone number: PHONE_NUMBER_TBD
-API base URL: API_BASE_URL_TBD
+API base URL: https://api-production-718d.up.railway.app
 ```
 
 ```bash
 # Health check
-curl "$API_BASE_URL_TBD/health"
+curl "https://api-production-718d.up.railway.app/health"
 
 # Create a patient
-curl -X POST "$API_BASE_URL_TBD/patients" \
+curl -X POST "https://api-production-718d.up.railway.app/patients" \
   -H "Content-Type: application/json" \
   -d '{
     "first_name": "Jane",
@@ -34,24 +34,24 @@ curl -X POST "$API_BASE_URL_TBD/patients" \
   }'
 
 # List patients (optional filters: last_name, date_of_birth, phone_number)
-curl "$API_BASE_URL_TBD/patients?last_name=davis"
+curl "https://api-production-718d.up.railway.app/patients?last_name=davis"
 
 # Get one patient
-curl "$API_BASE_URL_TBD/patients/<patient_id>"
+curl "https://api-production-718d.up.railway.app/patients/<patient_id>"
 
 # Update a patient (partial body)
-curl -X PUT "$API_BASE_URL_TBD/patients/<patient_id>" \
+curl -X PUT "https://api-production-718d.up.railway.app/patients/<patient_id>" \
   -H "Content-Type: application/json" \
   -d '{"email": "jane@example.com"}'
 
 # Soft-delete a patient
-curl -X DELETE "$API_BASE_URL_TBD/patients/<patient_id>"
+curl -X DELETE "https://api-production-718d.up.railway.app/patients/<patient_id>"
 
 # Call history for a patient (transcripts/summaries logged by the voice agent)
-curl "$API_BASE_URL_TBD/patients/<patient_id>/calls"
+curl "https://api-production-718d.up.railway.app/patients/<patient_id>/calls"
 
 # Vapi webhook (Vapi calls this; shown for reference only, requires the shared secret)
-curl -X POST "$API_BASE_URL_TBD/vapi/webhook" \
+curl -X POST "https://api-production-718d.up.railway.app/vapi/webhook" \
   -H "Content-Type: application/json" \
   -H "x-vapi-secret: $VAPI_WEBHOOK_SECRET" \
   -d '{"message": {"type": "tool-calls", "toolCallList": []}}'
