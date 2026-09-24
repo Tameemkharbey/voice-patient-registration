@@ -4,7 +4,7 @@
   "description": "Voice AI agent for conversational patient registration (Vapi + Express + SQLite)",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsc && npm --prefix dashboard ci --include=dev && npm --prefix dashboard run build",
     "start": "node --disable-warning=ExperimentalWarning dist/server.js",
     "seed": "tsx src/db/seed.ts",
     "typecheck": "tsc --noEmit",

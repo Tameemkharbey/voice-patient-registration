@@ -57,6 +57,8 @@ curl -X POST "https://api-production-718d.up.railway.app/vapi/webhook" \
   -d '{"message": {"type": "tool-calls", "toolCallList": []}}'
 ```
 
+Dashboard: https://api-production-718d.up.railway.app/dashboard/ (React + Vite + Tailwind + shadcn/ui, served by the same Express app; source in `dashboard/`). Lists and filters patients, auto-refreshes every 15s so phone registrations appear live, and shows per-patient details, call transcripts, edit and soft-delete.
+
 ## Architecture
 
 ```
