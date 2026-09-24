@@ -114,8 +114,9 @@ export const buildAssistant = (opts: AssistantOptions) => {
     analysisPlan: { summaryPlan: { enabled: true } },
     endCallFunctionEnabled: true,
     endCallMessage: 'Thanks for calling Sunrise Health Clinic. Take care!',
-    silenceTimeoutSeconds: 30,
-    maxDurationSeconds: 900,
+    // Caps protect the limited demo credit balance from abandoned or idle calls.
+    silenceTimeoutSeconds: 20,
+    maxDurationSeconds: 600,
     backgroundSound: 'office',
   };
 };
