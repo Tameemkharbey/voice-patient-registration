@@ -172,7 +172,10 @@ Additional schema notes:
   `deleted_at IS NULL`.
 - `call_logs` stores one row per Vapi call: `call_id`, the `patient_id` it
   was linked to (nullable — null means the call never reached a save),
-  `caller_number`, `ended_reason`, `summary`, `transcript`. Upserts
+  `caller_number`, `outcome` (`registered` / `updated` / `existing`, null when
+  nothing was saved), `duration_seconds`, `ended_reason`, `summary`, `transcript`.
+  Columns added after launch are applied by a small additive migration in
+  `src/db/connection.ts`. Upserts
   (`ON CONFLICT (call_id) DO UPDATE`) make both the tool-call link and the
   end-of-call report idempotent regardless of arrival order.
 
@@ -199,6 +202,8 @@ Error:
 | `POST /patients` | Create a patient | `201`; `400` malformed JSON, unrecognized field, or (on parse) request body isn't a JSON object; `413` body over 100kb; `422` field-level validation, `error.details` is an array of `{ field, message }` |
 | `PUT /patients/:id` | Partially update a patient (any subset of writable fields) | `200`; `400` invalid UUID or empty body (`"Provide at least one field to update"`); `404`; `422` field validation |
 | `DELETE /patients/:id` | Soft-delete a patient | `200` with `{ patient_id, deleted_at }`; `400` invalid UUID; `404` |
+| `GET /calls?limit=` | Recent calls, newest first (default 50, max 200), with outcome, duration and linked patient name; no transcript | `200`; `400` invalid limit |
+| `GET /calls/:callId` | One call including its full transcript | `200`; `400` invalid id; `404` |
 | `GET /patients/:id/calls` | Call history (transcripts/summaries) linked to this patient by the voice agent | `200`; `400` invalid UUID; `404` if the patient doesn't exist |
 | `POST /vapi/webhook` | Vapi server-message endpoint (tool-calls, end-of-call-report, status-update); requires `x-vapi-secret` (or `Authorization: Bearer <secret>`) matching `VAPI_WEBHOOK_SECRET` | `200` (always, once authenticated — tool failures are encoded in the JSON body for the LLM, not as HTTP errors); `401` if the secret is missing/wrong and one is configured |
 | any unmatched route | — | `404 NOT_FOUND` |
